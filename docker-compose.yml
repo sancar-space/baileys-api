@@ -1,0 +1,30 @@
+# Docker Compose para desenvolvimento e testes isolados do Baileys API
+# Para o stack completo de produção, use o compose em sancar-space/chatwoot (pasta deploy/)
+
+services:
+  baileys-api:
+    build: .
+    ports:
+      - "3025:3025"
+    environment:
+      - PORT=3025
+      - API_KEY=${API_KEY}
+      - REDIS_URL=redis://redis:6379
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
+      - SESSION_NAME=${SESSION_NAME:-default}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      - redis
+    restart: unless-stopped
+    volumes:
+      - baileys_sessions:/app/sessions
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+volumes:
+  baileys_sessions:
+  redis_data:
