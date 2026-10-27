@@ -1,0 +1,25 @@
+{
+  "name": "baileys-api",
+  "version": "1.0.0",
+  "description": "HTTP bridge para WhatsApp via Baileys — Sancar",
+  "author": "Sancar <dev@sancar.space>",
+  "license": "MIT",
+  "scripts": {
+    "start": "bun src/server.ts",
+    "dev": "bun --watch src/server.ts",
+    "manage-api-keys": "bun src/cli/manage-api-keys.ts"
+  },
+  "dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "^6.7.9",
+    "elysia": "^1.1.27",
+    "ioredis": "^5.4.2",
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/qrcode": "^1.5.5",
+    "bun-types": "^1.2.14"
+  }
+}

@@ -8,23 +8,38 @@ services:
       - "3025:3025"
     environment:
       - PORT=3025
-      - API_KEY=${API_KEY}
+      - API_KEY=${API_KEY:-}
       - REDIS_URL=redis://redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - WEBHOOK_URL=${WEBHOOK_URL:-}
-      - SESSION_NAME=${SESSION_NAME:-default}
+      - STORAGE_PATH=/app/storage
       - LOG_LEVEL=${LOG_LEVEL:-info}
+      - BAILEYS_LOG_LEVEL=${BAILEYS_LOG_LEVEL:-error}
+      - MEDIA_CLEANUP_ENABLED=true
+      - MEDIA_CLEANUP_INTERVAL_MS=3600000
+      - MEDIA_MAX_AGE_HOURS=24
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     volumes:
-      - baileys_sessions:/app/sessions
+      - baileys_storage:/app/storage
+    command:
+      - sh
+      - '-c'
+      - 'bun manage-api-keys create user ${API_KEY} && bun start'
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
-  baileys_sessions:
+  baileys_storage:
   redis_data:
