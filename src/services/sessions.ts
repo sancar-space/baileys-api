@@ -51,8 +51,10 @@ export async function connectSession(
   instanceId: string,
   webhookUrl?: string,
 ): Promise<SessionStatus> {
+  // Caller (server.ts POST /instances) already disconnects before calling connectSession,
+  // so this guard is only kept as a safety net for direct reconnect calls (e.g. auto-retry).
   const existing = sessions.get(instanceId)
-  if (existing && existing.status.status !== 'disconnected') {
+  if (existing && existing.status.status === 'connecting') {
     return { ...existing.status, qr: undefined }
   }
 
