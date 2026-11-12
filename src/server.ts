@@ -6,6 +6,7 @@ import {
   getSessionWithQr,
   listSessions,
   disconnectSession,
+  clearSessionDir,
   sendText,
   sendMedia,
   restorePersistedSessions,
@@ -41,11 +42,12 @@ const app = new Elysia()
       set.status = 400
       return { error: 'instanceId is required' }
     }
-    // Force reconnect: disconnect existing session first so QR is always regenerated
+    // Force reconnect: disconnect and clear session files so QR is always regenerated
     const existing = getSession(instanceId)
     if (existing) {
       await disconnectSession(instanceId)
     }
+    await clearSessionDir(instanceId)
     const status = await connectSession(instanceId, webhookUrl)
     return status
   })

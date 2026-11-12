@@ -242,6 +242,17 @@ export async function disconnectSession(instanceId: string): Promise<void> {
   log.info({ instanceId }, 'session disconnected')
 }
 
+export async function clearSessionDir(instanceId: string): Promise<void> {
+  const sessionDir = join(STORAGE_BASE, 'sessions', instanceId)
+  try {
+    const { rm } = await import('node:fs/promises')
+    await rm(sessionDir, { recursive: true, force: true })
+    log.info({ instanceId }, 'session files cleared')
+  } catch (err) {
+    log.warn({ instanceId, err }, 'could not clear session files')
+  }
+}
+
 export async function restorePersistedSessions(): Promise<void> {
   const sessionsDir = join(STORAGE_BASE, 'sessions')
   try {
