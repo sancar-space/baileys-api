@@ -124,7 +124,8 @@ const app = new Elysia()
 async function startServer() {
   const port = parseInt(Bun.env.PORT ?? '3025')
 
-  await restorePersistedSessions()
+  // Auto-restore skipped: stale sessions cause 428/405 reconnect loops;
+  // admins must click Reconectar in the Chatwoot UI after each restart.
   startMediaCleanup()
 
   app.listen(port)
