@@ -48,7 +48,9 @@ const app = new Elysia()
       await disconnectSession(instanceId)
     }
     await clearSessionDir(instanceId)
-    const status = await connectSession(instanceId, webhookUrl)
+    // freshStart=true: session files were wiped, so this is a QR scan flow;
+    // do not auto-retry on initial failures — admin must click Reconectar again.
+    const status = await connectSession(instanceId, webhookUrl, true)
     return status
   })
   .get('/instances/:id', ({ params, set }) => {

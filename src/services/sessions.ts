@@ -17,6 +17,7 @@ interface SessionEntry {
   socket?: WASocket
   retryCount: number
   retryTimer?: ReturnType<typeof setTimeout>
+  freshStart: boolean
 }
 
 const sessions = new Map<string, SessionEntry>()
@@ -51,6 +52,7 @@ async function deliverWebhook(
 export async function connectSession(
   instanceId: string,
   webhookUrl?: string,
+  freshStart: boolean = false,
 ): Promise<SessionStatus> {
   // Caller (server.ts POST /instances) already disconnects before calling connectSession,
   // so this guard is only kept as a safety net for direct reconnect calls (e.g. auto-retry).
@@ -67,7 +69,7 @@ export async function connectSession(
     status: 'connecting',
     webhookUrl: webhookUrl ?? Bun.env.WEBHOOK_URL ?? undefined,
   }
-  const entry: SessionEntry = { status: statusObj, retryCount: 0 }
+  const entry: SessionEntry = { status: statusObj, retryCount: 0, freshStart }
   sessions.set(instanceId, entry)
 
   const { state, saveCreds } = await useMultiFileAuthState(sessionDir)
@@ -129,14 +131,19 @@ export async function connectSession(
 
       if (loggedOut) {
         sessions.delete(instanceId)
-      } else if (entry.retryCount < 10) {
+      } else if (!entry.freshStart && entry.retryCount < 10) {
+        // Only auto-retry for sessions that were previously established (not fresh QR flows)
         entry.retryCount++
         const delay = Math.min(1000 * 2 ** entry.retryCount, 60_000)
         log.info({ instanceId, retryCount: entry.retryCount, delay }, 'scheduling reconnect')
         if (entry.retryTimer) clearTimeout(entry.retryTimer)
         entry.retryTimer = setTimeout(() => connectSession(instanceId, webhookUrl), delay)
       } else {
-        log.error({ instanceId }, 'max retries reached, giving up')
+        if (entry.freshStart) {
+          log.info({ instanceId, code }, 'fresh connection failed, not retrying — click Reconectar again')
+        } else {
+          log.error({ instanceId }, 'max retries reached, giving up')
+        }
         sessions.delete(instanceId)
       }
     }
