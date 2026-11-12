@@ -16,6 +16,7 @@ interface SessionEntry {
   status: SessionStatus
   socket?: WASocket
   retryCount: number
+  retryTimer?: ReturnType<typeof setTimeout>
 }
 
 const sessions = new Map<string, SessionEntry>()
@@ -132,7 +133,8 @@ export async function connectSession(
         entry.retryCount++
         const delay = Math.min(1000 * 2 ** entry.retryCount, 60_000)
         log.info({ instanceId, retryCount: entry.retryCount, delay }, 'scheduling reconnect')
-        setTimeout(() => connectSession(instanceId, webhookUrl), delay)
+        if (entry.retryTimer) clearTimeout(entry.retryTimer)
+        entry.retryTimer = setTimeout(() => connectSession(instanceId, webhookUrl), delay)
       } else {
         log.error({ instanceId }, 'max retries reached, giving up')
         sessions.delete(instanceId)
@@ -232,6 +234,11 @@ export function listSessions(): SessionStatus[] {
 export async function disconnectSession(instanceId: string): Promise<void> {
   const entry = sessions.get(instanceId)
   if (!entry) return
+  // Cancel any pending retry timer so it cannot race with a new connectSession call
+  if (entry.retryTimer) {
+    clearTimeout(entry.retryTimer)
+    entry.retryTimer = undefined
+  }
   try {
     await entry.socket?.logout()
   } catch {}
