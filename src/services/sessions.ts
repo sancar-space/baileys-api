@@ -142,6 +142,15 @@ export async function connectSession(
       const loggedOut = code === DisconnectReason.loggedOut
       statusObj.status = 'disconnected'
       log.info({ instanceId, code, loggedOut }, 'WhatsApp disconnected')
+
+      // Set cooldown BEFORE delivering the webhook. If we await first, Chatwoot receives
+      // the disconnect notification and immediately calls POST /instances while the
+      // cooldown map is still empty — bypassing the guard entirely (race condition).
+      if (loggedOut && entry.freshStart) {
+        cooldowns.set(instanceId, { until: Date.now() + 180_000, code })
+        log.info({ instanceId, code }, 'fresh 401 — cooldown set for 120s')
+      }
+
       await deliverWebhook(
         instanceId,
         'connection.update',
@@ -150,12 +159,6 @@ export async function connectSession(
       )
 
       if (loggedOut) {
-        // 401 during fresh start = WhatsApp rejected pairing; impose 2-min cooldown to
-        // prevent Chatwoot webhook handler from triggering rapid reconnect loops (→ 515)
-        if (entry.freshStart) {
-          cooldowns.set(instanceId, { until: Date.now() + 120_000, code })
-          log.info({ instanceId, code }, 'fresh 401 — cooldown set for 120s')
-        }
         sessions.delete(instanceId)
       } else if (!entry.freshStart && entry.retryCount < 10) {
         // Only auto-retry for sessions that were previously established (not fresh QR flows)
