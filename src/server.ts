@@ -10,6 +10,8 @@ import {
   sendText,
   sendMedia,
   restorePersistedSessions,
+  getReconnectCooldown,
+  clearReconnectCooldown,
 } from './services/sessions'
 import { startMediaCleanup } from './services/cleanup'
 import { log } from './logger'
@@ -42,7 +44,15 @@ const app = new Elysia()
       set.status = 400
       return { error: 'instanceId is required' }
     }
+    // Block rapid reconnects after WhatsApp 401 (prevents 515 loop from Chatwoot auto-retry)
+    const cooldown = getReconnectCooldown(instanceId)
+    if (cooldown) {
+      const secondsLeft = Math.ceil((cooldown.until - Date.now()) / 1000)
+      set.status = 429
+      return { error: `Reconnect cooldown active after 401 (${secondsLeft}s remaining)` }
+    }
     // Force reconnect: disconnect and clear session files so QR is always regenerated
+    clearReconnectCooldown(instanceId)
     const existing = getSession(instanceId)
     if (existing) {
       await disconnectSession(instanceId)

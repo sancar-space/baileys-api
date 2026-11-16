@@ -23,6 +23,23 @@ interface SessionEntry {
 
 const sessions = new Map<string, SessionEntry>()
 
+interface CooldownEntry { until: number; code: number }
+const cooldowns = new Map<string, CooldownEntry>()
+
+export function getReconnectCooldown(instanceId: string): CooldownEntry | null {
+  const entry = cooldowns.get(instanceId)
+  if (!entry) return null
+  if (Date.now() > entry.until) {
+    cooldowns.delete(instanceId)
+    return null
+  }
+  return entry
+}
+
+export function clearReconnectCooldown(instanceId: string): void {
+  cooldowns.delete(instanceId)
+}
+
 async function deliverWebhook(
   instanceId: string,
   event: string,
@@ -79,7 +96,7 @@ export async function connectSession(
     auth: state,
     printQRInTerminal: false,
     logger: baileysLogger as any,
-    browser: Browsers.ubuntu('Chrome'),
+    browser: Browsers.macOS('Chrome'),
     connectTimeoutMs: 60_000,
     defaultQueryTimeoutMs: 0, // no query timeout — prevents 408 during pairing
     keepAliveIntervalMs: 10_000,
@@ -133,6 +150,12 @@ export async function connectSession(
       )
 
       if (loggedOut) {
+        // 401 during fresh start = WhatsApp rejected pairing; impose 2-min cooldown to
+        // prevent Chatwoot webhook handler from triggering rapid reconnect loops (→ 515)
+        if (entry.freshStart) {
+          cooldowns.set(instanceId, { until: Date.now() + 120_000, code })
+          log.info({ instanceId, code }, 'fresh 401 — cooldown set for 120s')
+        }
         sessions.delete(instanceId)
       } else if (!entry.freshStart && entry.retryCount < 10) {
         // Only auto-retry for sessions that were previously established (not fresh QR flows)
