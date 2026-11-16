@@ -1,4 +1,5 @@
 import makeWASocket, {
+  Browsers,
   DisconnectReason,
   useMultiFileAuthState,
   type WASocket,
@@ -78,7 +79,7 @@ export async function connectSession(
     auth: state,
     printQRInTerminal: false,
     logger: baileysLogger as any,
-    browser: ['Baileys API', 'Chrome', '126.0.0'],
+    browser: Browsers.ubuntu('Chrome'),
     connectTimeoutMs: 60_000,
     keepAliveIntervalMs: 25_000,
     retryRequestDelayMs: 250,
