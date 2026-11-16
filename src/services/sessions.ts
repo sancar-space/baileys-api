@@ -81,8 +81,10 @@ export async function connectSession(
     logger: baileysLogger as any,
     browser: Browsers.ubuntu('Chrome'),
     connectTimeoutMs: 60_000,
-    keepAliveIntervalMs: 25_000,
+    defaultQueryTimeoutMs: 0, // no query timeout — prevents 408 during pairing
+    keepAliveIntervalMs: 10_000,
     retryRequestDelayMs: 250,
+    markOnlineOnConnect: false,
   })
 
   entry.socket = socket
