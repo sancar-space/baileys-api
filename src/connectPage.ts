@@ -68,8 +68,12 @@ button{padding:10px 18px;border:none;border-radius:10px;font-size:.9rem;font-wei
 
     <div id="qr-section" class="hidden">
       <div class="qr-wrap">
-        <img id="qr-img" src="" alt="QR Code">
-        <p class="qr-hint">WhatsApp → Dispositivos conectados → Conectar dispositivo</p>
+        <div id="qr-loading" style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px 0">
+          <div style="width:40px;height:40px;border:3px solid #e5e7eb;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite"></div>
+          <span style="color:#6b7280;font-size:.85rem">Gerando QR code...</span>
+        </div>
+        <img id="qr-img" src="" alt="QR Code" class="hidden">
+        <p class="qr-hint hidden" id="qr-hint-txt">WhatsApp → Dispositivos conectados → Conectar dispositivo</p>
         <p class="timer" id="qr-timer"></p>
       </div>
       <button class="btn-s" onclick="goInitial()">Cancelar</button>
@@ -134,6 +138,9 @@ function goInitial(){
   show('main-section'); hide('conn-ok');
   show('initial-section'); hide('qr-section'); hide('code-section');
   hide('code-display'); hideErr();
+  // Reset QR section state for next use
+  $('qr-img').src=''; hide('qr-img'); hide('qr-hint-txt'); show('qr-loading');
+  $('qr-timer').textContent='';
 }
 
 async function startQR(){
@@ -164,7 +171,7 @@ async function fetchQr(){
     const r=await fetch(BASE+'/qr');
     const d=await r.json();
     if(d.status==='connected'){onConnected(d.phoneNumber);return;}
-    if(d.qr){$('qr-img').src=d.qr;setBadge('qr_pending','Aguardando escaneamento');startCd();}
+    if(d.qr){$('qr-img').src=d.qr;show('qr-img');show('qr-hint-txt');hide('qr-loading');setBadge('qr_pending','Aguardando escaneamento');startCd();}
   }catch(e){}
 }
 

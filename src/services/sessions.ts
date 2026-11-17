@@ -160,6 +160,13 @@ export async function connectSession(
 
       if (loggedOut) {
         sessions.delete(instanceId)
+      } else if (code === 515) {
+        // 515 = WhatsApp restart signal sent after QR scan succeeds.
+        // Reconnect once with saved credentials (no new QR needed).
+        // Delay 1s to let saveCreds finish writing auth_state to disk.
+        log.info({ instanceId }, '515 restart after QR scan — reconnecting with saved creds')
+        sessions.delete(instanceId)
+        setTimeout(() => connectSession(instanceId, webhookUrl, false), 1000)
       } else if (!entry.freshStart && entry.retryCount < 10) {
         // Only auto-retry for sessions that were previously established (not fresh QR flows)
         entry.retryCount++
