@@ -202,20 +202,23 @@ export async function connectSession(
         ? (msg.key.senderPn ?? '').replace(/@s\.whatsapp\.net$/, '')
         : jid.replace(/@s\.whatsapp\.net$/, '').replace(/@g\.us$/, '')
 
+      // Extract text content from multiple message types
       let content = ''
-      if (msg.message?.conversation) {
-        content = msg.message.conversation
-      } else if (msg.message?.extendedTextMessage?.text) {
-        content = msg.message.extendedTextMessage.text
-      } else if (msg.message?.imageMessage?.caption) {
-        content = msg.message.imageMessage.caption
-      } else if (msg.message?.videoMessage?.caption) {
-        content = msg.message.videoMessage.caption
+      const innerMsg = msg.message?.deviceSentMessage?.message ?? msg.message
+      if (innerMsg?.conversation) {
+        content = innerMsg.conversation
+      } else if (innerMsg?.extendedTextMessage?.text) {
+        content = innerMsg.extendedTextMessage.text
+      } else if (innerMsg?.imageMessage?.caption) {
+        content = innerMsg.imageMessage.caption
+      } else if (innerMsg?.videoMessage?.caption) {
+        content = innerMsg.videoMessage.caption
       }
 
-      // Skip stub/notification events that carry no message content.
-      // These arrive first on LID connections before the real payload.
-      if (messageType === 'unknown' && !content) continue
+      log.info(
+        { instanceId, jid, phoneNumber, messageType, hasContent: !!content, pushName: msg.pushName },
+        'message.upsert received',
+      )
 
       await deliverWebhook(
         instanceId,
