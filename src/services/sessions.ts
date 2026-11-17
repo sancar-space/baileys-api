@@ -197,10 +197,14 @@ export async function connectSession(
 
       // LID JIDs (WhatsApp Business multi-device) look like "<number>@lid".
       // The real E.164 number is in key.senderPn; strip the domain suffix.
+      // For group messages the sender is in key.participant, not remoteJid.
       const isLid = jid.endsWith('@lid')
+      const isGroup = jid.endsWith('@g.us')
       const phoneNumber = isLid
-        ? (msg.key.senderPn ?? '').replace(/@s\.whatsapp\.net$/, '')
-        : jid.replace(/@s\.whatsapp\.net$/, '').replace(/@g\.us$/, '')
+        ? (msg.key.senderPn ?? '').replace(/@s\.whatsapp\.net$/, '').replace(/@lid$/, '')
+        : isGroup
+          ? (msg.key.participant ?? '').replace(/@s\.whatsapp\.net$/, '').replace(/@lid$/, '')
+          : jid.replace(/@s\.whatsapp\.net$/, '')
 
       // Extract text content from multiple message types
       let content = ''
@@ -232,7 +236,7 @@ export async function connectSession(
           content,
           message: msg.message,
           timestamp: msg.messageTimestamp,
-          isGroup: jid.endsWith('@g.us'),
+          isGroup,
         },
         statusObj.webhookUrl,
       )
