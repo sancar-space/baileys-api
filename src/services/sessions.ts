@@ -296,6 +296,14 @@ export async function clearSessionDir(instanceId: string): Promise<void> {
   }
 }
 
+export async function requestPairingCode(instanceId: string, phoneNumber: string): Promise<string> {
+  const entry = sessions.get(instanceId)
+  if (!entry?.socket) throw new Error(`Instance "${instanceId}" not found`)
+  const phone = phoneNumber.replace(/\D/g, '')
+  if (!phone) throw new Error('Invalid phone number')
+  return entry.socket.requestPairingCode(phone)
+}
+
 export async function restorePersistedSessions(): Promise<void> {
   const sessionsDir = join(STORAGE_BASE, 'sessions')
   try {

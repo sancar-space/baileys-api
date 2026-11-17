@@ -12,9 +12,11 @@ import {
   restorePersistedSessions,
   getReconnectCooldown,
   clearReconnectCooldown,
+  requestPairingCode,
 } from './services/sessions'
 import { startMediaCleanup } from './services/cleanup'
 import { log } from './logger'
+import { getConnectPageHtml } from './connectPage'
 
 function extractKey(request: Request): string {
   const auth = request.headers.get('Authorization')
