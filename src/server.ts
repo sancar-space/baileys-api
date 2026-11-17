@@ -38,6 +38,10 @@ const app = new Elysia()
     instances: listSessions().length,
     timestamp: new Date().toISOString(),
   }))
+  .get('/connect/:id', ({ params }) => {
+    const html = getConnectPageHtml(params.id, Bun.env.API_KEY ?? '')
+    return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+  })
   .use(authPlugin)
   .get('/instances', () => listSessions())
   .post('/instances', async ({ body, set }) => {
@@ -129,6 +133,23 @@ const app = new Elysia()
     }
     await disconnectSession(params.id)
     return { success: true }
+  })
+  .post('/instances/:id/pairing-code', async ({ params, body, set }) => {
+    const { phoneNumber } = body as { phoneNumber?: string }
+    if (!phoneNumber) { set.status = 400; return { error: 'phoneNumber is required' } }
+    clearReconnectCooldown(params.id)
+    const existing = getSession(params.id)
+    if (existing) await disconnectSession(params.id)
+    await clearSessionDir(params.id)
+    await connectSession(params.id, undefined, true)
+    await new Promise(r => setTimeout(r, 3000))
+    try {
+      const code = await requestPairingCode(params.id, phoneNumber)
+      return { code }
+    } catch (err) {
+      set.status = 422
+      return { error: err instanceof Error ? err.message : 'Failed to get pairing code' }
+    }
   })
   .onError(({ error, code }) => {
     if (code === 'VALIDATION') return { error: 'Invalid request' }
