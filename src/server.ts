@@ -93,16 +93,17 @@ const app = new Elysia()
       set.status = 429
       return { error: `Reconnect cooldown active after 401 (${secondsLeft}s remaining)` }
     }
-    // Force reconnect: disconnect and clear session files so QR is always regenerated
+    // Reconnect using existing session files (Signal sessions preserved).
+    // Clearing session files would destroy Signal ratchet state and cause Bad MAC
+    // on all subsequent messages. The QR flow is triggered automatically when
+    // no creds exist, or explicitly via POST /connect/:id/start.
     clearReconnectCooldown(instanceId)
     const existing = getSession(instanceId)
     if (existing) {
       await disconnectSession(instanceId)
     }
-    await clearSessionDir(instanceId)
-    // freshStart=true: session files were wiped, so this is a QR scan flow;
-    // do not auto-retry on initial failures — admin must click Reconectar again.
-    const status = await connectSession(instanceId, webhookUrl, true)
+    // freshStart=false: existing creds are reused; auto-retry is allowed.
+    const status = await connectSession(instanceId, webhookUrl, false)
     return status
   })
   .get('/instances/:id', ({ params, set }) => {

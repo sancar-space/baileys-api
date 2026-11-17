@@ -1,6 +1,7 @@
 import makeWASocket, {
   Browsers,
   DisconnectReason,
+  makeCacheableSignalKeyStore,
   useMultiFileAuthState,
   type WASocket,
 } from '@whiskeysockets/baileys'
@@ -93,7 +94,10 @@ export async function connectSession(
   const { state, saveCreds } = await useMultiFileAuthState(sessionDir)
 
   const socket = makeWASocket({
-    auth: state,
+    auth: {
+      creds: state.creds,
+      keys: makeCacheableSignalKeyStore(state.keys, baileysLogger as any),
+    },
     printQRInTerminal: false,
     logger: baileysLogger as any,
     browser: Browsers.macOS('Chrome'),
