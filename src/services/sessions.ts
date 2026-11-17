@@ -194,7 +194,13 @@ export async function connectSession(
       const jid = msg.key.remoteJid ?? ''
       const msgTypes = Object.keys(msg.message ?? {})
       const messageType = msgTypes.find(t => t !== 'messageContextInfo') ?? 'unknown'
-      const phoneNumber = jid.replace(/@s\.whatsapp\.net$/, '').replace(/@g\.us$/, '')
+
+      // LID JIDs (WhatsApp Business multi-device) look like "<number>@lid".
+      // The real E.164 number is in key.senderPn; strip the domain suffix.
+      const isLid = jid.endsWith('@lid')
+      const phoneNumber = isLid
+        ? (msg.key.senderPn ?? '').replace(/@s\.whatsapp\.net$/, '')
+        : jid.replace(/@s\.whatsapp\.net$/, '').replace(/@g\.us$/, '')
 
       let content = ''
       if (msg.message?.conversation) {
@@ -206,6 +212,10 @@ export async function connectSession(
       } else if (msg.message?.videoMessage?.caption) {
         content = msg.message.videoMessage.caption
       }
+
+      // Skip stub/notification events that carry no message content.
+      // These arrive first on LID connections before the real payload.
+      if (messageType === 'unknown' && !content) continue
 
       await deliverWebhook(
         instanceId,
