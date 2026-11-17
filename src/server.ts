@@ -39,8 +39,44 @@ const app = new Elysia()
     timestamp: new Date().toISOString(),
   }))
   .get('/connect/:id', ({ params }) => {
-    const html = getConnectPageHtml(params.id, Bun.env.API_KEY ?? '')
+    const html = getConnectPageHtml(params.id)
     return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+  })
+  .get('/connect/:id/status', ({ params, set }) => {
+    const session = getSession(params.id)
+    if (!session) { set.status = 404; return { error: 'Instance not found' } }
+    return session
+  })
+  .get('/connect/:id/qr', ({ params, set }) => {
+    const session = getSessionWithQr(params.id)
+    if (!session) { set.status = 404; return { error: 'Instance not found' } }
+    if (!session.qr) return { qr: null, status: session.status, instanceId: params.id }
+    return { qr: session.qr, status: session.status, instanceId: params.id }
+  })
+  .post('/connect/:id/start', async ({ params, set }) => {
+    clearReconnectCooldown(params.id)
+    const existing = getSession(params.id)
+    if (existing) await disconnectSession(params.id)
+    await clearSessionDir(params.id)
+    const status = await connectSession(params.id, undefined, true)
+    return status
+  })
+  .post('/connect/:id/pairing-code', async ({ params, body, set }) => {
+    const { phoneNumber } = body as { phoneNumber?: string }
+    if (!phoneNumber) { set.status = 400; return { error: 'phoneNumber is required' } }
+    clearReconnectCooldown(params.id)
+    const existing = getSession(params.id)
+    if (existing) await disconnectSession(params.id)
+    await clearSessionDir(params.id)
+    await connectSession(params.id, undefined, true)
+    await new Promise(r => setTimeout(r, 3000))
+    try {
+      const code = await requestPairingCode(params.id, phoneNumber)
+      return { code }
+    } catch (err) {
+      set.status = 422
+      return { error: err instanceof Error ? err.message : 'Failed to get pairing code' }
+    }
   })
   .use(authPlugin)
   .get('/instances', () => listSessions())

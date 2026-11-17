@@ -1,6 +1,5 @@
-export function getConnectPageHtml(instanceId: string, apiKey: string): string {
+export function getConnectPageHtml(instanceId: string): string {
   const safeId = JSON.stringify(instanceId)
-  const safeKey = JSON.stringify(apiKey)
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -94,8 +93,8 @@ button{padding:10px 18px;border:none;border-radius:10px;font-size:.9rem;font-wei
 
 <script>
 const IID = ${safeId};
-const KEY = ${safeKey};
-const H = {'Content-Type':'application/json','Authorization':'Bearer '+KEY};
+const BASE = '/connect/'+IID;
+const JSON_H = {'Content-Type':'application/json'};
 let pollT = null, cdT = null, connPollT = null, mode = 'init';
 
 const $=id=>document.getElementById(id);
@@ -111,7 +110,7 @@ function hideErr(){ hide('err'); }
 
 async function checkStatus(){
   try{
-    const r=await fetch('/instances/'+IID,{headers:H});
+    const r=await fetch(BASE+'/status');
     if(r.status===404){setBadge('disconnected','Desconectado');return;}
     const d=await r.json();
     if(d.status==='connected') onConnected(d.phoneNumber);
@@ -141,7 +140,7 @@ async function startQR(){
   hideErr(); hide('initial-section');
   setBadge('connecting','Iniciando sessão...');
   try{
-    const r=await fetch('/instances/'+IID,{method:'POST',headers:H,body:JSON.stringify({instanceId:IID})});
+    const r=await fetch(BASE+'/start',{method:'POST',headers:JSON_H,body:JSON.stringify({instanceId:IID})});
     const d=await r.json();
     if(!r.ok){setBadge('disconnected','Erro'); show('initial-section'); return;}
     show('qr-section'); mode='qr'; pollQr();
@@ -162,7 +161,7 @@ async function pollQr(){
 
 async function fetchQr(){
   try{
-    const r=await fetch('/instances/'+IID+'/qr',{headers:H});
+    const r=await fetch(BASE+'/qr');
     const d=await r.json();
     if(d.status==='connected'){onConnected(d.phoneNumber);return;}
     if(d.qr){$('qr-img').src=d.qr;setBadge('qr_pending','Aguardando escaneamento');startCd();}
@@ -187,7 +186,7 @@ async function getCode(){
   btn.innerHTML='<span class="spinner"></span>Aguarde...';
   setBadge('connecting','Solicitando código...');
   try{
-    const r=await fetch('/instances/'+IID+'/pairing-code',{method:'POST',headers:H,body:JSON.stringify({phoneNumber:phone,instanceId:IID})});
+    const r=await fetch(BASE+'/pairing-code',{method:'POST',headers:JSON_H,body:JSON.stringify({phoneNumber:phone,instanceId:IID})});
     const d=await r.json();
     btn.disabled=false; btn.textContent='Novo código';
     if(!r.ok){showErr(d.error||'Erro ao obter código. Tente novamente.');setBadge('disconnected','Erro');return;}
@@ -196,7 +195,7 @@ async function getCode(){
     setBadge('connecting','Aguardando confirmação no WhatsApp...');
     stopAll();
     connPollT=setInterval(async()=>{
-      const r2=await fetch('/instances/'+IID,{headers:H});
+      const r2=await fetch(BASE+'/status');
       if(!r2.ok) return;
       const d2=await r2.json();
       if(d2.status==='connected'){onConnected(d2.phoneNumber);}
