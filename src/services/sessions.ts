@@ -215,6 +215,12 @@ export async function connectSession(
             : participantJid.replace(/@s\.whatsapp\.net$/, '').replace(/@lid$/, '')
           : jid.replace(/@s\.whatsapp\.net$/, '')
 
+      // Debug: dump raw message structure for diagnosis (remove after fix)
+      log.info(
+        { instanceId, jid, isLid, msgKeys: Object.keys(msg.message ?? {}), rawMessage: JSON.stringify(msg.message) },
+        'debug: raw message structure',
+      )
+
       // Extract text content from multiple message types
       let content = ''
       const innerMsg = msg.message?.deviceSentMessage?.message ?? msg.message
