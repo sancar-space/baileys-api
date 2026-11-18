@@ -202,12 +202,17 @@ export async function connectSession(
       // LID JIDs (WhatsApp Business multi-device) look like "<number>@lid".
       // The real E.164 number is in key.senderPn; strip the domain suffix.
       // For group messages the sender is in key.participant, not remoteJid.
+      // When participant is also a LID, use key.participantPn for the real phone.
       const isLid = jid.endsWith('@lid')
       const isGroup = jid.endsWith('@g.us')
+      const participantJid = msg.key.participant ?? ''
+      const participantIsLid = participantJid.endsWith('@lid')
       const phoneNumber = isLid
         ? (msg.key.senderPn ?? '').replace(/@s\.whatsapp\.net$/, '').replace(/@lid$/, '')
         : isGroup
-          ? (msg.key.participant ?? '').replace(/@s\.whatsapp\.net$/, '').replace(/@lid$/, '')
+          ? participantIsLid
+            ? (msg.key.participantPn ?? '').replace(/@s\.whatsapp\.net$/, '')
+            : participantJid.replace(/@s\.whatsapp\.net$/, '').replace(/@lid$/, '')
           : jid.replace(/@s\.whatsapp\.net$/, '')
 
       // Extract text content from multiple message types
@@ -221,6 +226,18 @@ export async function connectSession(
         content = innerMsg.imageMessage.caption
       } else if (innerMsg?.videoMessage?.caption) {
         content = innerMsg.videoMessage.caption
+      } else if (innerMsg?.audioMessage) {
+        content = '[Áudio]'
+      } else if (innerMsg?.documentMessage) {
+        content = innerMsg.documentMessage.fileName ? `[Documento: ${innerMsg.documentMessage.fileName}]` : '[Documento]'
+      } else if (innerMsg?.stickerMessage) {
+        content = '[Sticker]'
+      } else if (innerMsg?.locationMessage) {
+        content = '[Localização]'
+      } else if (innerMsg?.contactMessage) {
+        content = `[Contato: ${innerMsg.contactMessage.displayName ?? ''}]`
+      } else if (innerMsg?.reactionMessage) {
+        content = `[Reação: ${innerMsg.reactionMessage.text ?? ''}]`
       }
 
       log.info(
