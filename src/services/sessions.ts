@@ -197,6 +197,9 @@ export async function connectSession(
 
       const jid = msg.key.remoteJid ?? ''
 
+      // Skip WhatsApp Status/Stories broadcasts — not real conversations
+      if (jid === 'status@broadcast') continue
+
       // Skip messages where Baileys could not decrypt the content.
       // This happens when Signal sessions are stale or missing for @lid JIDs.
       // Baileys internally sends a key-retry request; the resent message will
