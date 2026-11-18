@@ -196,7 +196,17 @@ export async function connectSession(
       if (msg.key.fromMe) continue
 
       const jid = msg.key.remoteJid ?? ''
-      const msgTypes = Object.keys(msg.message ?? {})
+
+      // Skip messages where Baileys could not decrypt the content.
+      // This happens when Signal sessions are stale or missing for @lid JIDs.
+      // Baileys internally sends a key-retry request; the resent message will
+      // arrive as a new event with the actual content.
+      if (!msg.message) {
+        log.warn({ instanceId, jid, msgId: msg.key.id }, 'skipping null-message event (Signal decryption failure)')
+        continue
+      }
+
+      const msgTypes = Object.keys(msg.message)
       const messageType = msgTypes.find(t => t !== 'messageContextInfo') ?? 'unknown'
 
       // LID JIDs (WhatsApp Business multi-device) look like "<number>@lid".
@@ -214,12 +224,6 @@ export async function connectSession(
             ? (msg.key.participantPn ?? '').replace(/@s\.whatsapp\.net$/, '')
             : participantJid.replace(/@s\.whatsapp\.net$/, '').replace(/@lid$/, '')
           : jid.replace(/@s\.whatsapp\.net$/, '')
-
-      // Debug: dump raw message structure for diagnosis (remove after fix)
-      log.info(
-        { instanceId, jid, isLid, msgKeys: Object.keys(msg.message ?? {}), rawMessage: JSON.stringify(msg.message) },
-        'debug: raw message structure',
-      )
 
       // Extract text content from multiple message types
       let content = ''
